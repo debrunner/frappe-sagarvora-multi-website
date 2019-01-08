@@ -1,0 +1,14 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.7-browsers
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Setting environment variables
+          command: echo 'export TRAVIS_BUILD_DIR="$HOME/repo"' >> $BASH_ENV
+      - run:
+          name: Install script
+          command: ~/repo/.travis/install.sh

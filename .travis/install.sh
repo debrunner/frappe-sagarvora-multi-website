@@ -1,20 +1,16 @@
 #!/bin/bash
-
 set -e
 
-sudo rm /etc/apt/sources.list.d/mongodb*.list
-sudo rm /etc/apt/sources.list.d/docker.list
-sudo apt-get install hhvm && rm -rf /home/travis/.kiex/
-sudo apt-get purge -y mysql-common mysql-server mysql-client
-source ~/.nvm/nvm.sh
-nvm install v8.10.0
+# source ~/.nvm/nvm.sh
+# nvm install v8.10.0
 
-pip install python-coveralls
+sudo apt-get install python3-apt
+pip install --user --ignore-installed setuptools
+pip install --user urllib3 pyOpenSSL ndg-httpsclient pyasn1
+pip install --user python-coveralls
 
-wget https://raw.githubusercontent.com/frappe/bench/master/playbooks/install.py
-
-sudo python install.py --develop --user travis --without-bench-setup
-sudo pip install -e ~/bench
+python $TRAVIS_BUILD_DIR/.travis/install.py --develop --user travis --without-bench-setup
+pip install --user -e ~/bench
 
 rm $TRAVIS_BUILD_DIR/.git/shallow
 cd ~/ && bench init frappe-bench --python $(which python) --frappe-path $TRAVIS_BUILD_DIR

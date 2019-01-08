@@ -2,6 +2,12 @@ language: python
 dist: trusty
 sudo: required
 
+cache:
+  directories:
+    - $HOME/.cache/yarn
+    - $HOME/.cache/pip
+    - /var/cache/apt/archives
+
 python:
   - 2.7
   - 3.6
