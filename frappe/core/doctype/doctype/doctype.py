@@ -52,7 +52,6 @@ class DocType(Document):
 			self.permissions = []
 
 		self.scrub_field_names()
-		self.scrub_options_in_select()
 		self.set_default_in_list_view()
 		self.set_default_translatable()
 		self.validate_series()
@@ -202,17 +201,6 @@ class DocType(Document):
 			# unique is automatically an index
 			if d.unique: d.search_index = 0
 
-	def scrub_options_in_select(self):
-		"""Strip options for whitespaces"""
-		for field in self.fields:
-			if field.fieldtype == "Select" and field.options is not None:
-				options_list = []
-				for i, option in enumerate(field.options.split("\n")):
-					_option = option.strip()
-					if i==0 or _option:
-						options_list.append(_option)
-				field.options = '\n'.join(options_list)
-
 	def validate_series(self, autoname=None, name=None):
 		"""Validate if `autoname` property is correctly set."""
 		if not autoname: autoname = self.autoname
@@ -294,12 +282,12 @@ class DocType(Document):
 			return
 
 		fields = [d.fieldname for d in self.fields if d.fieldtype in data_fieldtypes]
-
-		frappe.db.sql('''delete from
+		if fields:
+			frappe.db.sql('''delete from
 				`tabCustom Field`
-			where
-				 dt = {0} and fieldname in ({1})
-		'''.format('%s', ', '.join(['%s'] * len(fields))), tuple([self.name] + fields), as_dict=True)
+				where
+				dt = {0} and fieldname in ({1})
+				'''.format('%s', ', '.join(['%s'] * len(fields))), tuple([self.name] + fields), as_dict=True)
 
 	def sync_global_search(self):
 		'''If global search settings are changed, rebuild search properties for this table'''
@@ -355,7 +343,8 @@ class DocType(Document):
 		if merge:
 			frappe.throw(_("DocType can not be merged"))
 
-		if not frappe.flags.in_test and not frappe.flags.in_patch:
+		# Do not rename and move files and folders for custom doctype
+		if not self.custom and not frappe.flags.in_test and not frappe.flags.in_patch:
 			self.rename_files_and_folders(old, new)
 
 	def after_rename(self, old, new, merge=False):
@@ -705,6 +694,20 @@ def validate_fields(meta):
 			frappe.throw(_('DocType <b>{0}</b> provided for the field <b>{1}</b> must have atleast one Link field')
 				.format(doctype, docfield.fieldname), frappe.ValidationError)
 
+	def scrub_options_in_select(field):
+		"""Strip options for whitespaces"""
+
+		if field.fieldtype == "Select" and field.options is not None:
+			options_list = []
+			for i, option in enumerate(field.options.split("\n")):
+				_option = option.strip()
+				if i==0 or _option:
+					options_list.append(_option)
+			field.options = '\n'.join(options_list)
+
+	def scrub_fetch_from(field):
+		if hasattr(field, 'fetch_from') and getattr(field, 'fetch_from'):
+			field.fetch_from = field.fetch_from.strip('\n').strip()
 
 	fields = meta.get("fields")
 	fieldname_list = [d.fieldname for d in fields]
@@ -734,6 +737,8 @@ def validate_fields(meta):
 		check_unique_and_text(d)
 		check_illegal_depends_on_conditions(d)
 		check_table_multiselect_option(d)
+		scrub_options_in_select(d)
+		scrub_fetch_from(d)
 
 	check_fold(fields)
 	check_search_fields(meta, fields)

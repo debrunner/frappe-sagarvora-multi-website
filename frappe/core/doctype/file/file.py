@@ -94,7 +94,7 @@ class File(NestedSet):
 			self.validate_file_name()
 		self.validate_folder()
 
-		if not self.flags.ignore_file_validate:
+		if not self.file_url and not self.flags.ignore_file_validate:
 			if not self.is_folder:
 				self.validate_file()
 			self.generate_content_hash()
@@ -139,7 +139,7 @@ class File(NestedSet):
 	def set_folder_size(self):
 		"""Set folder size if folder"""
 		if self.is_folder and not self.is_new():
-			self.file_size = frappe.utils.cint(self.get_folder_size())
+			self.file_size = cint(self.get_folder_size())
 			self.db_set('file_size', self.file_size)
 
 			for folder in self.get_ancestors():
@@ -175,6 +175,9 @@ class File(NestedSet):
 		TODO: validate for private file
 		"""
 		full_path = self.get_full_path()
+
+		if full_path.startswith('http'):
+			return True
 
 		if not os.path.exists(full_path):
 			frappe.throw(_("File {0} does not exist").format(self.file_url), IOError)
@@ -231,7 +234,7 @@ class File(NestedSet):
 			else:
 				try:
 					image, filename, extn = get_web_image(self.file_url)
-				except (requests.exceptions.HTTPError, requests.exceptions.SSLError, IOError):
+				except (requests.exceptions.HTTPError, requests.exceptions.SSLError, IOError, TypeError):
 					return
 
 			size = width, height
@@ -287,6 +290,8 @@ class File(NestedSet):
 
 		zip_path = frappe.get_site_path(self.file_url.strip('/'))
 		base_url = os.path.dirname(self.file_url)
+
+		files = []
 		with zipfile.ZipFile(zip_path) as zf:
 			zf.extractall(os.path.dirname(zip_path))
 			for info in zf.infolist():
@@ -305,8 +310,10 @@ class File(NestedSet):
 					file_doc.attached_to_doctype = self.attached_to_doctype
 					file_doc.attached_to_name = self.attached_to_name
 					file_doc.save()
+					files.append(file_doc)
 
 		frappe.delete_doc('File', self.name)
+		return files
 
 
 	def get_file_url(self):
@@ -384,7 +391,10 @@ class File(NestedSet):
 		elif file_path.startswith("/files/"):
 			file_path = get_files_path(*file_path.split("/files/", 1)[1].split("/"))
 
-		else:
+		elif file_path.startswith("http"):
+			pass
+
+		elif not self.file_url:
 			frappe.throw(_("There is some problem with the file url: {0}").format(file_path))
 
 		return file_path
@@ -813,12 +823,9 @@ def download_file(file_url):
 	"""
 	file_doc = frappe.get_doc("File", {"file_url": file_url})
 	file_doc.check_permission("read")
-	path = os.path.join(get_files_path(), os.path.basename(file_url))
 
-	with open(path, "rb") as fileobj:
-		filedata = fileobj.read()
 	frappe.local.response.filename = os.path.basename(file_url)
-	frappe.local.response.filecontent = filedata
+	frappe.local.response.filecontent = file_doc.get_content()
 	frappe.local.response.type = "download"
 
 def extract_images_from_doc(doc, fieldname):
@@ -885,7 +892,8 @@ def get_random_filename(extn=None, content_type=None):
 def unzip_file(name):
 	'''Unzip the given file and make file records for each of the extracted files'''
 	file_obj = frappe.get_doc('File', name)
-	file_obj.unzip()
+	files = file_obj.unzip()
+	return len(files)
 
 
 @frappe.whitelist()
@@ -916,3 +924,10 @@ def validate_filename(filename):
 	timestamp = now_datetime().strftime(" %Y-%m-%d %H:%M:%S")
 	fname = get_file_name(filename, timestamp)
 	return fname
+
+@frappe.whitelist()
+def get_files_in_folder(folder):
+	return frappe.db.get_all('File',
+		{ 'folder': folder },
+		['name', 'file_name', 'file_url', 'is_folder', 'modified']
+	)

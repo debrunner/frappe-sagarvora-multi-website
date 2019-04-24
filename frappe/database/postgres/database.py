@@ -21,6 +21,7 @@ psycopg2.extensions.register_type(DEC2FLOAT)
 
 class PostgresDatabase(Database):
 	ProgrammingError = psycopg2.ProgrammingError
+	TableMissingError = psycopg2.ProgrammingError
 	OperationalError = psycopg2.OperationalError
 	InternalError = psycopg2.InternalError
 	SQLError = psycopg2.ProgrammingError
@@ -32,7 +33,7 @@ class PostgresDatabase(Database):
 		self.type_map = {
 			'Currency':		('decimal', '18,6'),
 			'Int':			('bigint', None),
-			'Long Int':		('bigint', None), # convert int to bigint if length is more than 11
+			'Long Int':		('bigint', None),
 			'Float':		('decimal', '18,6'),
 			'Percent':		('decimal', '18,6'),
 			'Check':		('smallint', None),
@@ -40,8 +41,8 @@ class PostgresDatabase(Database):
 			'Long Text':	('text', ''),
 			'Code':			('text', ''),
 			'Text Editor':	('text', ''),
-			'Markdown Editor':	('longtext', ''),
-			'HTML Editor':	('longtext', ''),
+			'Markdown Editor':	('text', ''),
+			'HTML Editor':	('text', ''),
 			'Date':			('date', ''),
 			'Datetime':		('timestamp', None),
 			'Time':			('time', '6'),
@@ -51,6 +52,7 @@ class PostgresDatabase(Database):
 			'Dynamic Link':	('varchar', self.VARCHAR_LEN),
 			'Password':		('varchar', self.VARCHAR_LEN),
 			'Select':		('varchar', self.VARCHAR_LEN),
+			'Rating':		('smallint', None),
 			'Read Only':	('varchar', self.VARCHAR_LEN),
 			'Attach':		('text', ''),
 			'Attach Image':	('text', ''),

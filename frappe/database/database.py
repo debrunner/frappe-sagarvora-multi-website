@@ -153,6 +153,10 @@ class Database(object):
 					frappe.log(values)
 					frappe.log(">>>>")
 				self._cursor.execute(query, values)
+
+				if frappe.flags.in_migrate:
+					self.log_touched_tables(query, values)
+
 			else:
 				if debug:
 					if explain:
@@ -164,6 +168,9 @@ class Database(object):
 					frappe.log(">>>>")
 
 				self._cursor.execute(query)
+
+				if frappe.flags.in_migrate:
+					self.log_touched_tables(query)
 
 			if debug:
 				time_end = time()
@@ -833,7 +840,7 @@ class Database(object):
 		"""Returns list of column names from given doctype."""
 		columns = self.get_db_table_columns('tab' + doctype)
 		if not columns:
-			raise self.ProgrammingError
+			raise self.TableMissingError
 		return columns
 
 	def has_column(self, doctype, column):
@@ -879,11 +886,20 @@ class Database(object):
 		# implemented in specific class
 		pass
 
+	@staticmethod
+	def is_column_missing(e):
+		return frappe.db.is_missing_column(e)
+
 	def get_descendants(self, doctype, name):
 		'''Return descendants of the current record'''
-		lft, rgt = self.get_value(doctype, name, ('lft', 'rgt'))
-		return self.sql_list('''select name from `tab{doctype}`
-			where lft > {lft} and rgt < {rgt}'''.format(doctype=doctype, lft=lft, rgt=rgt))
+		node_location_indexes = self.get_value(doctype, name, ('lft', 'rgt'))
+		if node_location_indexes:
+			lft, rgt = node_location_indexes
+			return self.sql_list('''select name from `tab{doctype}`
+				where lft > {lft} and rgt < {rgt}'''.format(doctype=doctype, lft=lft, rgt=rgt))
+		else:
+			# when document does not exist
+			return []
 
 	def is_missing_table_or_column(self, e):
 		return self.is_missing_column(e) or self.is_missing_table(e)
@@ -902,6 +918,20 @@ class Database(object):
 			), values)
 		else:
 			frappe.throw('No conditions provided')
+
+	def log_touched_tables(self, query, values=None):
+		if values:
+			query = frappe.safe_decode(self._cursor.mogrify(query, values))
+		if query.strip().lower().split()[0] in ('insert', 'delete', 'update', 'alter'):
+			# ([`\"']?) Captures ', " or ` at the begining of the table name (if provided)
+			# (tab([A-Z]\w+)( [A-Z]\w+)*) Captures table names that start with "tab"
+			# and are continued with multiple words that start with a captital letter
+			# e.g. 'tabXxx' or 'tabXxx Xxx' or 'tabXxx Xxx Xxx' and so on
+			# \1 matches the first captured group (quote character) at the end of the table name
+			tables = [groups[1] for groups in re.findall(r'([`"\']?)(tab([A-Z]\w+)( [A-Z]\w+)*)\1', query)]
+			if frappe.flags.touched_tables is None:
+				frappe.flags.touched_tables = set()
+			frappe.flags.touched_tables.update(tables)
 
 
 def enqueue_jobs_after_commit():

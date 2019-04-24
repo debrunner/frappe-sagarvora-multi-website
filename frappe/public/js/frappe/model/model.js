@@ -13,6 +13,10 @@ $.extend(frappe.model, {
 		'_user_tags', '_comments', '_assign', '_liked_by', 'docstatus',
 		'parent', 'parenttype', 'parentfield', 'idx'],
 
+	core_doctypes_list: ['DocType', 'DocField', 'DocPerm', 'User', 'Role', 'Has Role',
+		'Page', 'Module Def', 'Print Format', 'Report', 'Customize Form',
+		'Customize Form Field', 'Property Setter', 'Custom Field', 'Custom Script'],
+
 	std_fields: [
 		{fieldname:'name', fieldtype:'Link', label:__('ID')},
 		{fieldname:'owner', fieldtype:'Link', label:__('Created By'), options: 'User'},
@@ -83,13 +87,18 @@ $.extend(frappe.model, {
 		return !frappe.model.std_fields_list.includes(fieldname);
 	},
 
-	get_std_field: function(fieldname) {
+	get_std_field: function(fieldname, ignore=false) {
 		var docfield = $.map([].concat(frappe.model.std_fields).concat(frappe.model.std_fields_table),
 			function(d) {
 				if(d.fieldname==fieldname) return d;
 			});
-		if(!docfield.length) {
-			frappe.msgprint(__("Unknown Column: {0}", [fieldname]));
+		if (!docfield.length) {
+			//Standard fields are ignored in case of adding columns as a result of groupby
+			if (ignore) {
+				return {fieldname: fieldname};
+			} else {
+				frappe.msgprint(__("Unknown Column: {0}", [fieldname]));
+			}
 		}
 		return docfield[0];
 	},
@@ -248,8 +257,7 @@ $.extend(frappe.model, {
 	is_submittable: function(doctype) {
 		if(!doctype) return false;
 		return locals.DocType[doctype]
-			&& locals.DocType[doctype].is_submittable
-			&& !this.has_workflow(doctype);
+			&& locals.DocType[doctype].is_submittable;
 	},
 
 	is_table: function(doctype) {

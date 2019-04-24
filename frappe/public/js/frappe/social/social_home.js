@@ -8,24 +8,19 @@ frappe.social.Home = class SocialHome {
 		this.page = parent.page;
 		this.setup_header();
 		this.make_body();
-		this.set_primary_action();
 	}
 	make_body() {
 		this.$social_container = this.$parent.find('.layout-main');
-		frappe.require('/assets/js/frappe-vue.min.js', () => {
-			new Vue({
-				el: this.$social_container[0],
-				render: h => h(Home)
-			});
+		new Vue({
+			el: this.$social_container[0],
+			render: h => h(Home),
+			data: {
+				'page': this.page
+			}
 		});
 	}
 	setup_header() {
 		this.page.set_title(__('Social'));
-	}
-	set_primary_action() {
-		this.page.set_primary_action(__('Post'), () => {
-			frappe.social.post_dialog.show();
-		});
 	}
 };
 
@@ -50,33 +45,6 @@ frappe.social.post_dialog = new frappe.ui.Dialog({
 		}).finally(() => {
 			frappe.social.post_dialog.enable_primary_action();
 		});
-	}
-});
-
-frappe.social.update_user_image = new frappe.ui.Dialog({
-	title: __("User Image"),
-	fields: [
-		{
-			fieldtype: "Attach Image",
-			fieldname: "image",
-			label: __("Image"),
-			reqd: 1,
-			default: frappe.user.image()
-		},
-	],
-	primary_action_label: __('Set Image'),
-	primary_action: (values) => {
-		const user = frappe.session.user;
-		frappe.db.set_value('User', user, 'user_image', values.image)
-			.then((resp) => {
-				frappe.boot.user_info[user].image = resp.message.user_image;
-				frappe.app_updates.trigger('user_image_updated');
-				frappe.social.update_user_image.clear();
-				frappe.social.update_user_image.hide();
-			})
-			.fail((err) => {
-				frappe.msgprint(err);
-			});
 	}
 });
 
