@@ -34,7 +34,7 @@ install:
 before_script:
   - cd ~/frappe-bench
   # - sed -i 's/9000/9001/g' sites/common_site_config.json
-  - bench start &
+  # - bench start &
   - sleep 10
 
 script:
