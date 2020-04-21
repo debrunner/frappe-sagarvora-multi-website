@@ -130,7 +130,8 @@ function get_rollup_options_for_css(output_file, input_files) {
 				path.resolve(bench_path, '**/*.scss'),
 				path.resolve(bench_path, '**/*.css')
 			],
-			minimize: minimize_css
+			minimize: minimize_css,
+			sourceMap: output_file.startsWith('css/') && !production
 		})
 	];
 
