@@ -87,6 +87,7 @@ This is the text version of this email
 			".really.long.message.id.that.should.not.wrap.unti")
 		result = safe_decode(prepare_message(email=email, recipient='test@test.com',
 					recipients_list=[]))
+		print(result)
 		self.assertTrue(
 			"a.really.long.message.id.that.should.not.wrap.until.998.if.it.does.then.exchange.will.break" +
 			".really.long.message.id.that.should.not.wrap.unti" in result)

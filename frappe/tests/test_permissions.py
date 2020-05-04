@@ -378,6 +378,7 @@ class TestPermissions(unittest.TestCase):
 		add_user_permission('Blogger', '_Test Blogger 2', 'test2@example.com', applicable_for='User')
 
 		posts = frappe.get_all('Blog Post', fields=['name', 'blogger'])
+		print(posts)
 
 		# Get all posts for admin
 		self.assertEqual(len(posts), 4)

@@ -28,7 +28,7 @@ matrix:
     env: DB=mariadb TYPE=server
     script: bench --site test_site run-tests --coverage
 
-  - name: "PPostgreSQL"
+  - name: "PostgreSQL"
     env: DB=postgres TYPE=server
     script: bench --site test_site run-tests --coverage
 
